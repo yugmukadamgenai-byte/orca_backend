@@ -74,10 +74,19 @@ WSGI_APPLICATION = "orca_backend.wsgi.application"
 # DATABASE_URL env var (set automatically by Render when you attach a
 # free Postgres instance) takes over in production. Falls back to a
 # local SQLite file for development.
+#
+# conn_max_age=0 (rather than a persistent value like 600) is important
+# specifically because Neon's free tier auto-suspends the database after
+# inactivity. A "persistent" connection Django tries to reuse can already
+# be dead on Neon's end by the time the next request comes in, causing
+# "SSL connection has been closed unexpectedly" errors. Opening a fresh
+# connection per request avoids that, at the small cost of a bit more
+# per-request connection overhead - a reasonable trade for a serverless
+# free-tier database.
 DATABASES = {
     "default": dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600,
+        conn_max_age=0,
     )
 }
 
