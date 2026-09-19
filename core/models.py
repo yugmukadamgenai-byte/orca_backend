@@ -24,7 +24,15 @@ class AgentRun(models.Model):
     query = models.TextField()
     location = models.CharField(max_length=100, db_index=True)
     agents_run = models.CharField(max_length=200)  # comma-separated
-    verdict = models.CharField(max_length=50)
+    verdict = models.CharField(
+        max_length=50,
+        choices=[
+            ("clear", "Clear"),
+            ("risk_flagged", "Risk Flagged"),
+            ("inconclusive", "Inconclusive"),
+            ("unknown", "Unknown"),
+        ],
+    )
     duration_ms = models.FloatField()
     full_response = models.TextField(blank=True)
 

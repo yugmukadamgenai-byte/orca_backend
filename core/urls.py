@@ -10,4 +10,5 @@ urlpatterns = [
     path("", include(router.urls)),
     path("trends/", views.trends, name="trends"),
     path("usage-summary/", views.usage_summary, name="usage-summary"),
+    path("health/", views.health, name="health"),
 ]

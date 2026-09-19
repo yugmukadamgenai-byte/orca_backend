@@ -70,6 +70,15 @@ def trends(request):
 
 
 @api_view(["GET"])
+def health(request):
+    """Simple uptime/monitoring endpoint - returns 200 with no database
+    query, so it works even if Neon is temporarily unreachable, letting
+    you tell 'the web service is up' apart from 'the database is down'
+    as two different failure modes."""
+    return Response({"status": "ok"})
+
+
+@api_view(["GET"])
 def usage_summary(request):
     """Quick summary stats for the agent usage view - counts, avg duration,
     verdict breakdown."""
