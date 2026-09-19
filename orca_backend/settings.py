@@ -18,6 +18,16 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-insecure-key-change-me")
 # Render sets RENDER=true automatically; use that to detect production.
 DEBUG = os.environ.get("DEBUG", "true").lower() == "true"
 
+# Fail loudly rather than silently: if DEBUG is off (production) but
+# nobody ever set a real SECRET_KEY, that's a serious misconfiguration -
+# better to crash on startup with a clear message than to quietly run a
+# public site with a well-known, guessable secret key.
+if not DEBUG and SECRET_KEY == "dev-only-insecure-key-change-me":
+    raise RuntimeError(
+        "SECRET_KEY is not set. Set a real random value via the SECRET_KEY "
+        "environment variable in Render's dashboard before running in production."
+    )
+
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 if RENDER_EXTERNAL_HOSTNAME:
@@ -112,4 +122,67 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    # Without pagination, /readings/ and /agent-runs/ would return every
+    # row ever recorded in one response. With the scheduler polling every
+    # 3 minutes across 10 locations, that grows by ~4,800 rows/day - this
+    # keeps individual responses small and fast regardless of how much
+    # history has piled up.
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 50,
+    # Rate limiting: every GET endpoint is intentionally open with no
+    # login (see API_INTEGRATION_GUIDE.md), which means anyone - not just
+    # your app - can hit it. These caps stop one misbehaving client (a
+    # buggy app retry loop, a scraper, deliberate abuse) from exhausting
+    # Render's and Neon's free-tier limits for everyone. Adjust upward if
+    # real usage legitimately needs more.
+    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle"],
+    "DEFAULT_THROTTLE_RATES": {"anon": "120/minute"},
+    # Ensures a client error (bad request) never becomes an unhandled
+    # 500 - DRF's default exception handler already does this for
+    # standard cases; being explicit here documents the intent.
+    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
+}
+
+# --- Production security hardening (only actually applies when DEBUG=False,
+# i.e. on Render - these would just get in the way of local development) ---
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 7  # 1 week - raise once confident nothing breaks
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    # Render terminates SSL at its own proxy and forwards plain HTTP
+    # internally - without this, Django can't tell the original request
+    # was HTTPS and SECURE_SSL_REDIRECT would cause a redirect loop.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# --- Logging: makes real errors visible in Render's log tab. Without
+# this, an unhandled exception in production (DEBUG=False) fails silently
+# from your perspective - the user just gets a generic error page and you
+# have no way to know it happened. ---
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            # Specifically surfaces 500 errors with full tracebacks in
+            # Render's logs, even though DEBUG=False hides them from users.
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
 }
