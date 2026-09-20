@@ -200,6 +200,49 @@ def login_view(request):
 
 
 @api_view(["GET"])
+def pfz(request):
+    """GET /api/pfz/?location=Kochi
+    Returns just the structured fishing zone data from the most recent
+    agent run for that location - clean lat/lon per zone, ready for the
+    app to plot directly, without needing to parse full_response text
+    or fetch the whole agent-run record."""
+    location = request.query_params.get("location")
+    if not location:
+        return Response({"error": "location query parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    run = AgentRun.objects.filter(location__iexact=location).order_by("-timestamp").first()
+    if not run:
+        return Response({"error": f"No data found for '{location}'"}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response({
+        "location": location,
+        "timestamp": run.timestamp,
+        "zones": run.pfz_zones,
+    })
+
+
+@api_view(["GET"])
+def route(request):
+    """GET /api/route/?location=Kochi
+    Returns the optimized visiting order for that location's fishing
+    zones - waypoints (with lat/lon and per-leg distance) and total
+    trip distance, from the most recent agent run."""
+    location = request.query_params.get("location")
+    if not location:
+        return Response({"error": "location query parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    run = AgentRun.objects.filter(location__iexact=location).order_by("-timestamp").first()
+    if not run:
+        return Response({"error": f"No data found for '{location}'"}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response({
+        "location": location,
+        "timestamp": run.timestamp,
+        **run.route_data,
+    })
+
+
+@api_view(["GET"])
 def health(request):
     """Simple uptime/monitoring endpoint - returns 200 with no database
     query, so it works even if Neon is temporarily unreachable, letting

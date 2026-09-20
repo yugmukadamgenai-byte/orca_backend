@@ -35,6 +35,8 @@ class AgentRun(models.Model):
     )
     duration_ms = models.FloatField()
     full_response = models.TextField(blank=True)
+    pfz_zones = models.JSONField(default=list, blank=True)
+    route_data = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["-timestamp"]

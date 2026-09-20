@@ -13,4 +13,6 @@ urlpatterns = [
     path("health/", views.health, name="health"),
     path("login/", views.login_view, name="login"),
     path("register/", views.register_view, name="register"),
+    path("pfz/", views.pfz, name="pfz"),
+    path("route/", views.route, name="route"),
 ]
