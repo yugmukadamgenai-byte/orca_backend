@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "rest_framework.authtoken",  # gives us the Token model for mobile app login
     "core",
 ]
 
@@ -122,6 +123,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
     # Without pagination, /readings/ and /agent-runs/ would return every
     # row ever recorded in one response. With the scheduler polling every
     # 3 minutes across 10 locations, that grows by ~4,800 rows/day - this
