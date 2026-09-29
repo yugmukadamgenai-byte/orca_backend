@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from django.conf import settings
+from django.http import HttpResponse
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -268,3 +271,10 @@ def usage_summary(request):
         "avg_duration_ms": round(avg_duration, 1),
         "verdict_counts": verdict_counts,
     })
+
+
+def dashboard(request):
+    """GET /api/dashboard/ - the ORCA web dashboard (single HTML page that
+    calls the JSON endpoints above from the browser)."""
+    html = (Path(__file__).parent / "templates" / "core" / "dashboard.html").read_text(encoding="utf-8")
+    return HttpResponse(html)
